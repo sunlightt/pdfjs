@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+	</head>
+	<body>
+		<input multiple accept=".pdf" type="file" name="" id="" onchange="loadPDF(this.files)"/>
+		<button type="button" onclick="saveFile()">save file</button>
+		<canvas id="preview"></canvas>
+	</body>
+	<!-- <script src="https://cdn.bootcdn.net/ajax/libs/pdf.js/2.2.228/pdf.min.js"></script> -->
+	<!-- <script type="text/javascript" src="./pdf_js/build/pdf.js"> -->
+	<script src="https://cdn.bootcdn.net/ajax/libs/pdf.js/2.4.456/pdf.min.js"></script>
+		
+	</script>
+	<script type="text/javascript">
+		const preview = document.getElementById('preview');
+		let pdfFile, pdf, pageNum, context = preview.getContext('2d');
+		// 2.4.456
+		// 2.2.228
+		// pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.bootcss.com/pdf.js/2.4.456/pdf.worker.min.js';
+		// pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf_js/build/pdf.worker.js';
+		// <script src="https://cdn.bootcdn.net/ajax/libs/pdf.js/2.4.456/pdf.worker.min.js">
+		pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.bootcdn.net/ajax/libs/pdf.js/2.4.456/pdf.worker.min.js';
+		// let CMAP_URL = './pdf_js/web/cmaps/'
+		let CMAP_URL = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@2.4.456/cmaps/'
+		function loadPDF(file){
+			file = [...file];
+			let fragment = document.createDocumentFragment();
+			for(var i=0;i<file.length;i++){
+				pdfFile = file[i];
+				let canvasDom = document.createElement('canvas');
+				let context = canvasDom.getContext('2d');
+				fragment.appendChild(canvasDom);
+				let reader = new FileReader();
+				reader.readAsDataURL(file[i]);
+				reader.onload = (e) => {
+					let result = e.target.result;
+					pdfjsLib.getDocument({
+					  url: result,
+					  cMapUrl: CMAP_URL,
+					  cMapPacked: true,
+					}).promise.then((pdf) => {
+					// pdfjsLib.getDocument(result).promise.then((pdf) => {
+						pdf.getPage(1).then(function (page) {
+							let scale = 1.5;
+							let viewport = page.getViewport({scale: scale});
+							// canvasDom.style.height = viewport.height + 'px';
+							// canvasDom.style.width = viewport.width + 'px';
+							canvasDom.height = viewport.height;
+							canvasDom.width = viewport.width;
+							let renderContext = {
+								canvasContext: context,
+								viewport: viewport
+							};
+							page.render(renderContext).promise.then(() =>{
+								let dataStr = canvasDom.toDataURL('image/png');
+								fragment.removeChild(canvasDom);
+								canvasDom = null;
+								context = null;
+								reader = null;
+								scale = null;
+								viewport = null;
+								renderContext = null;
+								if(i == file.length -1){
+									fragment = null;	
+								}
+								console.log('dataStr',dataStr)	
+								// saveFile();
+							});
+						});
+					})
+				};
+			}
+		}
+		
+		// 预览PDF
+		function showPDF(url) {
+			let loadingTask = pdfjsLib.getDocument(url);
+			loadingTask.promise.then(function (doc) {
+				pdf = doc;
+				pageNum = 1;
+				preview.hidden = false;
+				readerPage()
+			}, function (reason) {
+				alert(reason)
+			});
+		}
+		
+		function readerPage(callback) {
+			pdf.getPage(pageNum).then(function (page) {
+				let scale = 1.5;
+				let viewport = page.getViewport({scale: scale});
+			
+				preview.height = viewport.height;
+				preview.width = viewport.width;
+			
+				let renderContext = {
+					canvasContext: context,
+					viewport: viewport
+				};
+				page.render(renderContext).promise.then(callback);
+				
+				saveFile();
+			});
+		}
+		
+		function saveFile(){
+			let dataStr = preview.toDataURL('image/png');
+			console.log('dataStr',dataStr)	
+		}
+	</script>
+</html>
